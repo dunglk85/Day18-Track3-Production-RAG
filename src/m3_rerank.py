@@ -23,26 +23,35 @@ class CrossEncoderReranker:
 
     def _load_model(self):
         if self._model is None:
-            # TODO: Load cross-encoder model
-            # Option A: from FlagEmbedding import FlagReranker
-            #           self._model = FlagReranker(self.model_name, use_fp16=True)
-            # Option B: from sentence_transformers import CrossEncoder
-            #           self._model = CrossEncoder(self.model_name)
-            pass
+            from sentence_transformers import CrossEncoder
+            self._model = CrossEncoder(self.model_name)
         return self._model
 
     def rerank(self, query: str, documents: list[dict], top_k: int = RERANK_TOP_K) -> list[RerankResult]:
         """Rerank documents: top-20 → top-k."""
-        # TODO: Implement reranking
-        # 1. model = self._load_model()
-        # 2. pairs = [(query, doc["text"]) for doc in documents]
-        # 3. scores = model.compute_score(pairs)  # FlagReranker
-        #    OR scores = model.predict(pairs)      # CrossEncoder
-        # 4. Combine: [(score, doc) for score, doc in zip(scores, documents)]
-        # 5. Sort by score descending
-        # 6. Return top_k RerankResult(text=..., original_score=doc["score"],
-        #                              rerank_score=score, metadata=doc["metadata"], rank=i)
-        return []
+        model = self._load_model()
+
+        pairs = [(query, doc["text"]) for doc in documents]
+        scores = model.predict(pairs)
+
+        combined = [
+            (score, doc)
+            for score, doc in zip(scores, documents)
+        ]
+
+        combined.sort(key=lambda x: x[0], reverse=True)
+
+        results = []
+        for rank, (score, doc) in enumerate(combined[:top_k]):
+            results.append(RerankResult(
+                text=doc["text"],
+                original_score=doc.get("score", 0.0),
+                rerank_score=float(score),
+                metadata=doc["metadata"],
+                rank=rank + 1
+            ))
+
+        return results
 
 
 class FlashrankReranker:
@@ -51,22 +60,49 @@ class FlashrankReranker:
         self._model = None
 
     def rerank(self, query: str, documents: list[dict], top_k: int = RERANK_TOP_K) -> list[RerankResult]:
-        # TODO (optional): from flashrank import Ranker, RerankRequest
+        # Implementation: Reranking using Flashrank (if needed)
         # model = Ranker(); passages = [{"text": d["text"]} for d in documents]
         # results = model.rerank(RerankRequest(query=query, passages=passages))
-        return []
+        from flashrank import Ranker, RerankRequest
+
+        model = Ranker()
+        passages = [{"text": d["text"]} for d in documents]
+        results = model.rerank(
+            RerankRequest(query=query, passages=passages)
+        )
+
+        return [
+            RerankResult(
+                text=r.text,
+                original_score=doc.get("score", 0.0),
+                rerank_score=r.score,
+                metadata=doc["metadata"],
+                rank=i + 1
+            )
+            for i, (r, doc) in enumerate(zip(results, documents))
+        ]
 
 
 def benchmark_reranker(reranker, query: str, documents: list[dict], n_runs: int = 5) -> dict:
     """Benchmark latency over n_runs."""
-    # TODO: Implement benchmark
+    # Implementation: Latency benchmark for rerankers
     # 1. times = []
     # 2. for _ in range(n_runs):
     #      start = time.perf_counter()
     #      reranker.rerank(query, documents)
     #      times.append((time.perf_counter() - start) * 1000)  # ms
     # 3. return {"avg_ms": mean(times), "min_ms": min(times), "max_ms": max(times)}
-    return {"avg_ms": 0, "min_ms": 0, "max_ms": 0}
+    times = []
+    for _ in range(n_runs):
+        start = time.perf_counter()
+        reranker.rerank(query, documents)
+        times.append((time.perf_counter() - start) * 1000)  # ms
+
+    return {
+        "avg_ms": sum(times) / len(times) if times else 0,
+        "min_ms": min(times) if times else 0,
+        "max_ms": max(times) if times else 0
+    }
 
 
 if __name__ == "__main__":

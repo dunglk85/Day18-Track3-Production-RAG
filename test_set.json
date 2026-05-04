@@ -1,3 +1,10 @@
 [
-  {"question": "hihi cả nhà tự tạo testset bằng cơm nhé", "ground_truth": "Không kịp tạo luôn"},
+  {
+    "question": "Nhân viên được nghỉ phép năm bao nhiêu ngày?",
+    "ground_truth": "Nhân viên chính thức được nghỉ phép năm 12 ngày làm việc mỗi năm."
+  },
+  {
+    "question": "Thâm niên bao nhiêu năm thì được tăng thêm ngày nghỉ phép?",
+    "ground_truth": "Số ngày nghỉ phép tăng thêm 1 ngày cho mỗi 5 năm thâm niên."
+  }
 ]
